@@ -5,6 +5,10 @@
   </div>
 </h3>
 
+<p align="center">
+  📝<a href="https://arxiv.org/abs/2506.10055" target="_blank"><strong>[Paper]</strong></a>
+  📊<a href="https://huggingface.co/datasets/PersonalAILab/TaskCraft" target="_blank"> <strong>[Data]</strong></a>
+</p>
 
 `taskcraft` is a library for generating difficulty-scalable, multi-tool, and verifiable agentic tasks with execution trajectories. It offers:
 
