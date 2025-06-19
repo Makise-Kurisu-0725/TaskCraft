@@ -38,7 +38,7 @@ Before use, set the following environment variables (supports OpenAI-compatible 
 export OPENAI_API_BASE="your-openai-endpoint"   # e.g., OpenAI official or Azure OpenAI
 export OPENAI_API_KEY="your-api-key"            # OpenAI API key
 export SERP_API_KEY="your-serpapi-key"          # see https://serpapi.com/
-export JINA_API_KEY="your-jina-key"     
+export JINA_API_KEY="your-jina-key"             # see https://jina.ai/
 ```
 
 ## Usage Examples
