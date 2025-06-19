@@ -217,7 +217,7 @@ res1 = depth_extend(
 ```
 
 ## Dataset 
-The generated dataset can be find in [huggingface](https://huggingface.co/datasets/PersonalAILab/TaskCraft).
+The generated dataset can be found in [huggingface](https://huggingface.co/datasets/PersonalAILab/TaskCraft).
 
 ## Contribute
 Welcome to report issues or submit feature requests via [Issues](https://github.com/OPPO-PersonalAI/TaskCraft/issues). Feel free to contribute code or documentation improvements :).
