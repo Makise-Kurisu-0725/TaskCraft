@@ -16,6 +16,8 @@ from taskcraft.src.utils import CUSTOM_ROLE_CONVERSIONS, run_llm_prompt, load_ya
 from oagents import OpenAIServerModel
 import types
 
+from src.utils import check_envs
+
 # load prompt templates
 verify_prompt_yaml_path = Path(__file__).parent / "prompts/verify_prompts.yaml"
 verify_prompt_template = load_yaml(verify_prompt_yaml_path)
@@ -276,6 +278,9 @@ def depth_extend(
         search_agent='SearchAgent',
         verify_agent='VerifyAgent'
 ):
+    if search_agent == 'SearchAgent':
+        check_envs()
+
     args = types.SimpleNamespace(
         query=query,
         golden_answer=golden_answer,

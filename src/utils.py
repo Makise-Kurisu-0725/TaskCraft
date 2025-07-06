@@ -4,8 +4,7 @@
 # @Author       : Qianben Chen <chenqianben@oppo.com>
 # @LastUpdated  : 2025/6/11
 # @LICENSE      : Apache License 2.0
-
-
+import logging
 import os
 import json
 import yaml
@@ -169,3 +168,21 @@ def extract_answer(output_text):
     """Helper function to extract answer from output text"""
     answer_match = re.search(r'<answer>(.*?)</answer>', output_text, re.DOTALL)
     return answer_match.group(1).strip() if answer_match else None
+
+def check_envs():
+    """Check if required environment variables are set"""
+    api_base = os.environ.get("OPENAI_API_BASE")
+    if not api_base:
+        logging.warning("OPENAI_API_BASE environment variable is not set. ")
+
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        logging.warning("OPENAI_API_KEY environment variable is not set. ")
+
+    serpapi = os.environ.get("SERP_API_KEY")
+    if not serpapi:
+        logging.warning("SERP_API_KEY environment variable is not set. ")
+
+    jina_api = os.environ.get("JINA_API_KEY")
+    if not jina_api:
+        logging.warning("JINA_API_KEY environment variable is not set. ")

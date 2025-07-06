@@ -158,6 +158,15 @@ def width_extend(qa_batch, model_id="gpt-4.1") -> List[dict]:
     :param qa_batch: list of questions and answers (batch of 10)
     :return: list of validated grouped queries
     """
+    api_base = os.environ.get("OPENAI_API_BASE")
+    if not api_base:
+        logging.warning("OPENAI_API_BASE environment variable is not set. ")
+
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        logging.warning("OPENAI_API_KEY environment variable is not set. ")
+
+
     model = OpenAIServerModel(
         model_id,
         custom_role_conversions=CUSTOM_ROLE_CONVERSIONS,

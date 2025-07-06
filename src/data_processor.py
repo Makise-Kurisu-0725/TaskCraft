@@ -222,7 +222,7 @@ def find_main_title_enhanced(pdf_path, model, max_num=10):
                 model,
                 f"Input content: {input_text}",
                 "Please find the main title from the given text. The main title can be: title, web page title, website name, dataset name, etc."
-                f", return as JSON format with key 'title', and the language must be {language}",
+                f", return as JSON format with key 'title'",
                 return_json=True
             )
             main_title = response.get("title", "").strip()

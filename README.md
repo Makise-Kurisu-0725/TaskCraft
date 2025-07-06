@@ -29,9 +29,12 @@
 - [Citation](#citation)
 
 ## Installation
-If using the default agent of this project, please install the package:
+### Requirements
+Python>=3.10
+
+### Development. Install from source.
 ```bash
-conda create -n taskcraft python=3.11
+conda create -n taskcraft python=3.10
 conda activate taskcraft
 pip install -e .
 ```

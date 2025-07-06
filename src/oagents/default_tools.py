@@ -142,7 +142,7 @@ class GoogleSearchTool(Tool):
         super().__init__(self)
         import os
 
-        self.serpapi_key = os.getenv("SERPAPI_API_KEY")
+        self.serpapi_key = os.getenv("SERP_API_KEY")
 
     def forward(self, query: str, filter_year: Optional[int] = None) -> str:
         import requests

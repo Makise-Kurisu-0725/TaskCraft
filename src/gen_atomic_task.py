@@ -32,7 +32,7 @@ from .utils import (
     CUSTOM_ROLE_CONVERSIONS,
     load_yaml,
     run_llm_prompt,
-    write_jsonl
+    write_jsonl, check_envs
 )
 from .tools import (
     CrawlerReadTool,
@@ -122,7 +122,6 @@ def get_initial_conclusion(
         args,
         model,
         content_identifier,
-        language,
         prompt_input,
 ):
     """
@@ -133,7 +132,6 @@ def get_initial_conclusion(
     Args:
         model: The model used for processing the content.
         section: The section of the document to be processed.
-        language: The target language for the conclusions.
     Returns:
         A list of validated conclusions, each containing the conclusion text, 
         its relationship (R), and the content identifier.
@@ -165,7 +163,7 @@ def get_initial_conclusion(
     return validated_conclusions
 
 
-def get_candidate_tasks(args, model, content_identifier, language, readed_context):
+def get_candidate_tasks(args, model, content_identifier, readed_context):
     if args.modal == "single":
         chunk_size = args.chunk_size if hasattr(args, "chunk_size") else 16384
         sub_readed_context_list = split_text_intelligently(readed_context[0]["text"], chunk_size=chunk_size,
@@ -177,7 +175,7 @@ def get_candidate_tasks(args, model, content_identifier, language, readed_contex
     futures = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.num_workers) as executor:
         for sub_ctx in sub_readed_context_list:
-            futures.append(executor.submit(get_initial_conclusion, args, model, content_identifier, language, sub_ctx))
+            futures.append(executor.submit(get_initial_conclusion, args, model, content_identifier, sub_ctx))
         for future, sub_readed_context in zip(concurrent.futures.as_completed(futures), sub_readed_context_list):
             result = future.result()
             if args.modal == "multi":
@@ -582,6 +580,7 @@ def gen_atomic_tasks(
             question, golden_answer, content_identifier, model_id, agent_result, agent_trajectory, agent_score,
             agent_step_number, llm_result, llm_score.
     """
+    check_envs()
     if not os.path.exists(tmp_dir):
         os.makedirs(tmp_dir, exist_ok=True)
 
@@ -640,7 +639,6 @@ def gen_atomic_tasks(
             args,
             model,
             content_identifier,
-            language,
             readed_context
         )
     except Exception as e:
