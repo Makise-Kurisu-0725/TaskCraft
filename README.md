@@ -32,20 +32,36 @@
 ### Requirements
 Python>=3.10
 
-### Development. Install from source.
+### Method1: Install with pip
 ```bash
 conda create -n taskcraft python=3.10
 conda activate taskcraft
+pip install taskcraft
+```
+
+### Method2: Install from source for development.
+```bash
+conda create -n taskcraft python=3.10
+conda activate taskcraft
+cd TaskCraft
 pip install -e .
 ```
 
 ## Set API Keys
 Before use, set the following environment variables (supports OpenAI-compatible models and third-party tools):
+For Linux:
 ```bash
 export OPENAI_API_BASE="your-openai-endpoint"   # e.g., OpenAI official or Azure OpenAI
 export OPENAI_API_KEY="your-api-key"            # OpenAI API key
 export SERP_API_KEY="your-serpapi-key"          # see https://serpapi.com/
 export JINA_API_KEY="your-jina-key"             # see https://jina.ai/
+```
+For windows:
+```bash
+$env:OPENAI_API_BASE="your-openai-endpoint"   # e.g., OpenAI official or Azure OpenAI
+$env:OPENAI_API_KEY="your-api-key"            # OpenAI API key
+$env:SERP_API_KEY="your-serpapi-key"          # see https://serpapi.com/
+$env:JINA_API_KEY="your-jina-key"             # see https://jina.ai/
 ```
 
 ## Usage Examples
@@ -167,7 +183,7 @@ By default, we rely on [OAgents](https://github.com/OPPO-PersonalAI/OAgents), en
 You can add your own agent class in `src/tools/agent_tools.py` accordingly.
 
 ```python
-# src/tools/agent_tools.py
+# src/agent_tools.py
 
 # The three functions below need to be implemented in your agent class:
 # 1. Given an task, return the agent's text result.
