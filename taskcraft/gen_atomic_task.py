@@ -11,7 +11,7 @@ import os
 import types
 from functools import partial
 from pathlib import Path
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 import langid
 import requests
@@ -541,7 +541,8 @@ def gen_atomic_tasks(
         modal: Literal["single", "multi"] = "single",
         max_candiated_conclusions: int = 20,
         max_candidate_atomic: int = 10,
-        model_id: str = "gpt-4.1",
+        model_id: str = "",
+        model_path: Optional[str] = None,
         num_workers: int = 1,
         debug: bool = False,
         max_completion_tokens: int = 8192,
@@ -561,7 +562,7 @@ def gen_atomic_tasks(
                                    If -1, all conclusions will be processed.
         max_candidate_atomic: the maximum number of atomic tasks to be validated with agent.
                               If -1, all candidates will be validated
-        model_id: the model ID to be used for processing, e.g., "gpt-4.1".
+        model_id: the model ID to be used for processing. Leave empty if not required.
         num_workers: the number of parallel workers to be used for processing.
         debug: if True, debug mode is enabled, which will print more information.
         max_completion_tokens: the maximum number of completion tokens for the model.
@@ -583,10 +584,12 @@ def gen_atomic_tasks(
     if not os.path.exists(tmp_dir):
         os.makedirs(tmp_dir, exist_ok=True)
 
-    crawler = SimpleCrawler(serpapi_key=os.getenv("SERP_API_KEY"))
+    # Use internal fixed credentials for search and Jina services
+    crawler = SimpleCrawler()
     input_reader = CrawlerReadTool(crawler, read_type='jina_read')
     model = OpenAIServerModel(
         model_id,
+        model_path=model_path,
         custom_role_conversions=CUSTOM_ROLE_CONVERSIONS,
         max_completion_tokens=max_completion_tokens,
         api_key=os.environ.get("OPENAI_API_KEY"),
@@ -600,6 +603,7 @@ def gen_atomic_tasks(
         max_candiated_conclusions=max_candiated_conclusions,
         max_candidate_atomic=max_candidate_atomic,
         model_id=model_id,
+        model_path=model_path,
         num_workers=num_workers,
         debug=debug,
         max_completion_tokens=max_completion_tokens,

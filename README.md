@@ -48,20 +48,16 @@ pip install -e .
 ```
 
 ## Set API Keys
-Before use, set the following environment variables (supports OpenAI-compatible models and third-party tools):
+Before use, set the following environment variables (supports OpenAI-compatible models):
 For Linux:
 ```bash
 export OPENAI_API_BASE="your-openai-endpoint"   # e.g., OpenAI official or Azure OpenAI
 export OPENAI_API_KEY="your-api-key"            # OpenAI API key
-export SERP_API_KEY="your-serpapi-key"          # see https://serpapi.com/
-export JINA_API_KEY="your-jina-key"             # see https://jina.ai/
 ```
-For windows:
+For Windows:
 ```bash
 $env:OPENAI_API_BASE="your-openai-endpoint"   # e.g., OpenAI official or Azure OpenAI
 $env:OPENAI_API_KEY="your-api-key"            # OpenAI API key
-$env:SERP_API_KEY="your-serpapi-key"          # see https://serpapi.com/
-$env:JINA_API_KEY="your-jina-key"             # see https://jina.ai/
 ```
 
 ## Usage Examples
@@ -109,8 +105,9 @@ res5 = gen_atomic_tasks("The TaskCraft dataset contains 36,000 agentic tasks wit
 
 '''
 Some other useful parameters of gen_atomic_task:
-  model_id: str = "gpt-4.1", # The model to use for atomic task generation, default is gpt-4.1
-  max_candiated_conclusions: int = 20, the maximum number of candidate conclusions to be extracted from the input file. 
+  model_id: str = "",  # Model name sent to the API; leave empty if the server does not require it
+  model_path: str | None = None,  # Local tokenizer path if different from model_id
+  max_candiated_conclusions: int = 20, the maximum number of candidate conclusions to be extracted from the input file.
                              If -1, all conclusions will be processed.
   max_candidate_atomic: int = 10, the maximum number of atomic tasks to be validated with agent. If -1, all candidates will be validated.
   max_pdf_pages int = 10: the maximum number of PDF pages to be processed.

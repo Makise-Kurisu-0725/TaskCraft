@@ -211,8 +211,9 @@ This tool supports the following image formats: [".jpg", ".jpeg", ".png", ".gif"
         try:
             mime_type, _ = mimetypes.guess_type(file_path)
             base64_image = self._encode_image(file_path)
+            model_id = getattr(self.model, "model_id", "")
             payload = {
-                "model": "gpt-4.1",
+                "model": model_id,
                 "messages": [
                     {
                         "role": "user",

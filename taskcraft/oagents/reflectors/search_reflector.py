@@ -7,16 +7,19 @@ import yaml
 import json
 import os
 import importlib
+from typing import Optional
 
 from ..models import OpenAIServerModel, ChatMessage
 
 class SearchReflector:
     def __init__(self,
-                 model:OpenAIServerModel=None):
-        
+                 model: OpenAIServerModel | None = None,
+                 model_path: Optional[str] = None):
+
         self.model = model if model is not None else \
                     OpenAIServerModel(
-                        model_id="gpt-4.1",
+                        model_id="",
+                        model_path=model_path,
                         api_base=os.getenv("OPENAI_BASE_URL"),
                         api_key=os.getenv("OPENAI_API_KEY")
                     )
@@ -110,7 +113,7 @@ if __name__=="__main__":
     KEY = ""
     URL = ""
 
-    model = OpenAIServerModel(model_id="gpt-4.1",
+    model = OpenAIServerModel(model_id="",
                               api_base=URL,
                               api_key=KEY
                               )

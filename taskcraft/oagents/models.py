@@ -33,7 +33,10 @@ from openai import (
     APIStatusError,
     APIConnectionError,
     OpenAIError,
+    OpenAI,
+    AzureOpenAI,
 )
+from transformers import AutoTokenizer
 import time
 import re
 import pdb
@@ -272,6 +275,15 @@ class Model:
     def __init__(self, **kwargs):
         self.last_input_token_count = None
         self.last_output_token_count = None
+        # Clean any transport-only parameters that should not be forwarded
+        # to the backend completion API.  Some higher-level helpers may pass
+        # values like `model_path` or OpenAI credentials via `**kwargs` when
+        # constructing the model.  These keys are only used for local setup
+        # and will cause the OpenAI client to raise an error if they are
+        # forwarded.  We therefore strip them here before storing the default
+        # kwargs used for each request.
+        for invalid_key in ("model_path", "api_key", "api_base"):
+            kwargs.pop(invalid_key, None)
         self.kwargs = kwargs
 
     def _prepare_completion_kwargs(
@@ -324,6 +336,10 @@ class Model:
 
         # Finally, use the passed-in kwargs to override all settings
         completion_kwargs.update(kwargs)
+
+        # Map legacy parameter names to the OpenAI client argument
+        if "max_completion_tokens" in completion_kwargs:
+            completion_kwargs["max_tokens"] = completion_kwargs.pop("max_completion_tokens")
 
         return completion_kwargs
 
@@ -950,6 +966,7 @@ class OpenAIServerModel(Model):
     def __init__(
         self,
         model_id: str,
+        model_path: Optional[str] = None,
         api_base: Optional[str] = None,
         api_key: Optional[str] = None,
         organization: Optional[str] | None = None,
@@ -957,16 +974,10 @@ class OpenAIServerModel(Model):
         custom_role_conversions: Optional[Dict[str, str]] = None,
         **kwargs,
     ):
-        try:
-            import openai
-        except ModuleNotFoundError:
-            raise ModuleNotFoundError(
-                "Please install 'openai' extra to use OpenAIServerModel: `pip install 'oagents[openai]'`"
-            ) from None
-
         super().__init__(**kwargs)
         self.model_id = model_id
-        self.client = openai.OpenAI(
+        self.model_path = model_path
+        self.client = OpenAI(
             base_url=api_base,
             api_key=api_key,
             organization=organization,
@@ -1004,33 +1015,43 @@ class OpenAIServerModel(Model):
             **kwargs,
         )
 
+        # Ensure transport-only keys like ``model_path`` or credentials are
+        # not forwarded to the OpenAI completion endpoint.
+        for invalid_key in ("model_path", "api_key", "api_base"):
+            completion_kwargs.pop(invalid_key, None)
+
         # Check if model_id contains 'o3' or 'o4'
         if 'o3' in self.model_id.lower() or 'o4' in self.model_id.lower():
             # Remove stop_sequences from completion_kwargs
             completion_kwargs.pop('stop', None)
 
-        # response = self.client.chat.completions.create(**completion_kwargs)
+        messages = completion_kwargs.pop("messages")
+        try:
+            tokenizer_name = self.model_path or self.model_id
+            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+            prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
+        except Exception:
+            prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
+        completion_kwargs["prompt"] = prompt
 
         max_retries = 5
         retry_delay = 5  # seconds
         for attempt in range(max_retries):
             try:
-                response = self.client.chat.completions.create(**completion_kwargs)
+                response = self.client.completions.create(**completion_kwargs)
 
                 self.last_input_token_count = response.usage.prompt_tokens
                 self.last_output_token_count = response.usage.completion_tokens
 
-                if not response.choices[0].message.content and not getattr(response.choices[0].message, 'tool_calls', None):  # o1 o3-mini
+                content = response.choices[0].text
+                if not content:
                     raise EmptyContentError(response)
 
-                message = ChatMessage.from_dict(
-                    response.choices[0].message.model_dump(include={"role", "content", "tool_calls"})
-                )
-                message.raw = response
-
-                # If model_id contains 'o3' or 'o4', manually truncate content based on stop_sequences
                 if 'o3' in self.model_id.lower() or 'o4' in self.model_id.lower():
-                    message.content = self.truncate_content_based_on_stop_sequences(message.content, stop_sequences)
+                    content = self.truncate_content_based_on_stop_sequences(content, stop_sequences)
+
+                message = ChatMessage(role="assistant", content=content)
+                message.raw = response
 
                 if tools_to_call_from is not None:
                     return parse_tool_args_if_needed(message)
@@ -1092,6 +1113,7 @@ class AzureOpenAIServerModel(OpenAIServerModel):
     def __init__(
         self,
         model_id: str,
+        model_path: Optional[str] = None,
         azure_endpoint: Optional[str] = None,
         api_key: Optional[str] = None,
         api_version: Optional[str] = None,
@@ -1102,11 +1124,9 @@ class AzureOpenAIServerModel(OpenAIServerModel):
         if api_key is None:
             api_key = os.environ.get("AZURE_OPENAI_API_KEY")
 
-        super().__init__(model_id=model_id, api_key=api_key, custom_role_conversions=custom_role_conversions, **kwargs)
+        super().__init__(model_id=model_id, model_path=model_path, api_key=api_key, custom_role_conversions=custom_role_conversions, **kwargs)
         # if we've reached this point, it means the openai package is available (checked in baseclass) so go ahead and import it
-        import openai
-
-        self.client = openai.AzureOpenAI(api_key=api_key, api_version=api_version, azure_endpoint=azure_endpoint)
+        self.client = AzureOpenAI(api_key=api_key, api_version=api_version, azure_endpoint=azure_endpoint)
 
 
 def add_tool_prompt(messages, tools):
@@ -1256,6 +1276,7 @@ class FakeToolCallOpenAIServerModel(Model):
     def __init__(
         self,
         model_id: str,
+        model_path: Optional[str] = None,
         api_base: Optional[str] = None,
         api_key: Optional[str] = None,
         organization: Optional[str] | None = None,
@@ -1263,16 +1284,10 @@ class FakeToolCallOpenAIServerModel(Model):
         custom_role_conversions: Optional[Dict[str, str]] = None,
         **kwargs,
     ):
-        try:
-            import openai
-        except ModuleNotFoundError:
-            raise ModuleNotFoundError(
-                "Please install 'openai' extra to use OpenAIServerModel: `pip install 'oagents[openai]'`"
-            ) from None
-
         super().__init__(**kwargs)
         self.model_id = model_id
-        self.client = openai.OpenAI(
+        self.model_path = model_path
+        self.client = OpenAI(
             base_url=api_base,
             api_key=api_key,
             organization=organization,
@@ -1355,7 +1370,14 @@ class FakeToolCallOpenAIServerModel(Model):
         if "ep" or "r1" in self.model_id.lower():
             completion_kwargs["messages"] = dict_content_to_str(completion_kwargs["messages"])
 
-        # response = self.client.chat.completions.create(**completion_kwargs)
+        messages = completion_kwargs.pop("messages")
+        try:
+            tokenizer_name = self.model_path or self.model_id
+            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+            prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
+        except Exception:
+            prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
+        completion_kwargs["prompt"] = prompt
 
         max_retries = 5
         retry_delay = 5  # seconds
@@ -1366,20 +1388,24 @@ class FakeToolCallOpenAIServerModel(Model):
         )
         for attempt in range(max_retries):
             try:
-                response = self.client.chat.completions.create(**completion_kwargs)
+                response = self.client.completions.create(**completion_kwargs)
 
                 self.last_input_token_count = response.usage.prompt_tokens
                 self.last_output_token_count = response.usage.completion_tokens
 
-                if not response.choices[0].message.content and not getattr(response.choices[0].message, 'tool_calls', None):  # o1 o3-mini
+                content = response.choices[0].text
+                if not content:
                     raise EmptyContentError(response)
 
                 if tools_to_call_from is not None:
-                    response = parse_tool_call_to_response(response)
-
-                message = ChatMessage.from_dict(
-                    response.choices[0].message.model_dump(include={"role", "content", "tool_calls"})
-                )
+                    temp_resp = type("Resp", (), {})()
+                    temp_resp.choices = [type("Choice", (), {})()]
+                    temp_resp.choices[0].message = type("Msg", (), {"content": content})()
+                    temp_resp = parse_tool_call_to_response(temp_resp)
+                    tool_calls = getattr(temp_resp.choices[0].message, "tool_calls", [])
+                    message = ChatMessage(role="assistant", content=content, tool_calls=tool_calls)
+                else:
+                    message = ChatMessage(role="assistant", content=content)
                 message.raw = response
 
                 return message

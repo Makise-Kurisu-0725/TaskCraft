@@ -111,6 +111,7 @@ def process_single_task(args):
     # initialze model
     model = OpenAIServerModel(
         args.model_id,
+        model_path=getattr(args, "model_path", None),
         custom_role_conversions=CUSTOM_ROLE_CONVERSIONS,
         max_completion_tokens=8192,
         api_key=os.environ.get("OPENAI_API_KEY"),
@@ -263,7 +264,8 @@ def depth_extend(
         golden_answer: str,
         identifier: str = None,
         trajectory: Optional[List] = None,
-        model_id: str = "gpt-4.1",
+        model_id: str = "",
+        model_path: Optional[str] = None,
         extended_attempts: int = 4,
         max_hops=2,
         max_backward_step=10,
@@ -279,6 +281,7 @@ def depth_extend(
         golden_answer=golden_answer,
         identifier=identifier,
         model_id=model_id,
+        model_path=model_path,
         extended_attempts=extended_attempts,
         max_hops=max_hops,
         max_backward_step=max_backward_step,
