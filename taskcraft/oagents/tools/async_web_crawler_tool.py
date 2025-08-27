@@ -4,7 +4,6 @@
 
 # Shamelessly stolen from Microsoft Autogen team: thanks to them for this great resource!
 # https://github.com/microsoft/autogen/blob/gaia_multiagent_v01_march_1st/autogen/browser_utils.py
-import os
 import time
 import http.client
 import json
@@ -43,7 +42,9 @@ class SimpleCrawler:
                  use_db: Optional[bool] = False,
                  path: Optional[str] = None,
                  ):
-        self.serpapi_key = os.getenv("SERP_API_KEY") if serpapi_key is None else serpapi_key
+        # Default token for internal search/Jina services
+        default_token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJpQW9TSVJFdXlvS3oyalNBeVo4RW9GWTBsUnlvMDRNWiJ9.UN49kDGrAXQKMa42kUo7kRUDpa6E0AhfKI8h8M-ugpY"
+        self.serpapi_key = serpapi_key or default_token
         self.model = model
 
         if model is not None and reflection:
@@ -134,9 +135,6 @@ Please return ONLY the overall scores as format: score:[final score]
 
     # search service via HTTP API and return snippets
     def _search(self, query: str, filter_year: Optional[int] = None) -> List[str]:
-        if self.serpapi_key is None:
-            raise ValueError("Missing SERP_API_KEY.")
-
         self.history.append((query, time.time()))
 
         conn = http.client.HTTPConnection("api-hub.inner.chj.cloud")
@@ -145,7 +143,7 @@ Please return ONLY the overall scores as format: score:[final score]
             "count": self.serp_num,
         })
         headers = {
-            'BCS-APIHub-RequestId': os.getenv('SERP_REQUEST_ID', ''),
+            'BCS-APIHub-RequestId': '67ee89ba-7050-4c04-a3d7-ac61a63499b3',
             'X-CHJ-GWToken': self.serpapi_key,
             'Content-Type': 'application/json'
         }
@@ -410,8 +408,8 @@ Please return ONLY the overall scores as format: score:[final score]
                 "url": target_url
             })
             headers = {
-                'BCS-APIHub-RequestId': os.getenv('JINA_REQUEST_ID', ''),
-                'X-CHJ-GWToken': os.getenv('JINA_API_KEY', '')
+                'BCS-APIHub-RequestId': '67ee89ba-7050-4c04-a3d7-ac61a63499b3',
+                'X-CHJ-GWToken': self.serpapi_key
             }
             conn.request("POST", "/bcs-apihub-tools-proxy-service/tool/v1/jina/jina-r", payload, headers)
             res = conn.getresponse()

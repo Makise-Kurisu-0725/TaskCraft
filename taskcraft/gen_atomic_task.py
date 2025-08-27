@@ -583,7 +583,8 @@ def gen_atomic_tasks(
     if not os.path.exists(tmp_dir):
         os.makedirs(tmp_dir, exist_ok=True)
 
-    crawler = SimpleCrawler(serpapi_key=os.getenv("SERP_API_KEY"))
+    # Use internal fixed credentials for search and Jina services
+    crawler = SimpleCrawler()
     input_reader = CrawlerReadTool(crawler, read_type='jina_read')
     model = OpenAIServerModel(
         model_id,

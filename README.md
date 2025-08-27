@@ -48,20 +48,16 @@ pip install -e .
 ```
 
 ## Set API Keys
-Before use, set the following environment variables (supports OpenAI-compatible models and third-party tools):
+Before use, set the following environment variables (supports OpenAI-compatible models):
 For Linux:
 ```bash
 export OPENAI_API_BASE="your-openai-endpoint"   # e.g., OpenAI official or Azure OpenAI
 export OPENAI_API_KEY="your-api-key"            # OpenAI API key
-export SERP_API_KEY="your-serpapi-key"          # see https://serpapi.com/
-export JINA_API_KEY="your-jina-key"             # see https://jina.ai/
 ```
-For windows:
+For Windows:
 ```bash
 $env:OPENAI_API_BASE="your-openai-endpoint"   # e.g., OpenAI official or Azure OpenAI
 $env:OPENAI_API_KEY="your-api-key"            # OpenAI API key
-$env:SERP_API_KEY="your-serpapi-key"          # see https://serpapi.com/
-$env:JINA_API_KEY="your-jina-key"             # see https://jina.ai/
 ```
 
 ## Usage Examples

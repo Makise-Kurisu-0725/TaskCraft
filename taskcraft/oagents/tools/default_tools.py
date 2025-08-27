@@ -140,25 +140,19 @@ class GoogleSearchTool(Tool):
 
     def __init__(self):
         super().__init__(self)
-        import os
-
-        self.serpapi_key = os.getenv("SERP_API_KEY")
+        # Fixed token for internal search service
+        self.serpapi_key = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJpQW9TSVJFdXlvS3oyalNBeVo4RW9GWTBsUnlvMDRNWiJ9.UN49kDGrAXQKMa42kUo7kRUDpa6E0AhfKI8h8M-ugpY"
 
     def forward(self, query: str, filter_year: Optional[int] = None) -> str:
         import http.client
         import json
-        import os
-
-        if self.serpapi_key is None:
-            raise ValueError("Missing SERP_API_KEY environment variable.")
-
         conn = http.client.HTTPConnection("api-hub.inner.chj.cloud")
         payload = json.dumps({
             "q": query,
             "count": 10,
         })
         headers = {
-            'BCS-APIHub-RequestId': os.getenv('SERP_REQUEST_ID', ''),
+            'BCS-APIHub-RequestId': '67ee89ba-7050-4c04-a3d7-ac61a63499b3',
             'X-CHJ-GWToken': self.serpapi_key,
             'Content-Type': 'application/json'
         }
