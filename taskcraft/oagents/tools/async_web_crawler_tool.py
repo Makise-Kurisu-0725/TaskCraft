@@ -134,7 +134,7 @@ Please return ONLY the overall scores as format: score:[final score]
     
 
     # search service via HTTP API and return snippets
-    def _search(self, query: str, filter_year: Optional[int] = None) -> List[str]:
+    def _search(self, query: str, filter_year: Optional[int] = None) -> List[Dict]:
         self.history.append((query, time.time()))
 
         conn = http.client.HTTPConnection("api-hub.inner.chj.cloud")

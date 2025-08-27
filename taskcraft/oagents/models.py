@@ -328,6 +328,10 @@ class Model:
         # Finally, use the passed-in kwargs to override all settings
         completion_kwargs.update(kwargs)
 
+        # Map legacy parameter names to the OpenAI client argument
+        if "max_completion_tokens" in completion_kwargs:
+            completion_kwargs["max_tokens"] = completion_kwargs.pop("max_completion_tokens")
+
         return completion_kwargs
 
     def get_token_counts(self) -> Dict[str, int]:
