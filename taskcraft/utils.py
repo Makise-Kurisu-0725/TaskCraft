@@ -179,10 +179,7 @@ def check_envs():
     if not api_key:
         logging.warning("OPENAI_API_KEY environment variable is not set. ")
 
-    serpapi = os.environ.get("SERP_API_KEY")
-    if not serpapi:
-        logging.warning("SERP_API_KEY environment variable is not set. ")
+    # Search and Jina services now use fixed credentials, so no
+    # environment variables are required for them. Only warn for
+    # OpenAI related settings.
 
-    jina_api = os.environ.get("JINA_API_KEY")
-    if not jina_api:
-        logging.warning("JINA_API_KEY environment variable is not set. ")

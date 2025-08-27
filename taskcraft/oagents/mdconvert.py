@@ -32,6 +32,7 @@ import speech_recognition as sr
 from bs4 import BeautifulSoup
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api.formatters import SRTFormatter
+from transformers import AutoTokenizer
 
 
 class _CustomMarkdownify(markdownify.MarkdownConverter):
@@ -752,9 +753,21 @@ class ImageConverter(MediaConverter):
                 ],
             }
         ]
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(model)
+            input_str = tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
+        except Exception:
+            input_str = json.dumps(messages)
 
-        response = client.chat.completions.create(model=model, messages=messages)
-        return response.choices[0].message.content
+        response = client.completions.create(
+            model=model,
+            prompt=input_str,
+            echo=False,
+            stream=False,
+            n=1,
+            max_tokens=256,
+        )
+        return response.choices[0].text
 
 
 class FileConversionException(Exception):
