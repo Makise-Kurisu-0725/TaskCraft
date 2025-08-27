@@ -957,6 +957,7 @@ class OpenAIServerModel(Model):
     def __init__(
         self,
         model_id: str,
+        model_path: Optional[str] = None,
         api_base: Optional[str] = None,
         api_key: Optional[str] = None,
         organization: Optional[str] | None = None,
@@ -966,6 +967,7 @@ class OpenAIServerModel(Model):
     ):
         super().__init__(**kwargs)
         self.model_id = model_id
+        self.model_path = model_path
         self.client = OpenAI(
             base_url=api_base,
             api_key=api_key,
@@ -1011,7 +1013,8 @@ class OpenAIServerModel(Model):
 
         messages = completion_kwargs.pop("messages")
         try:
-            tokenizer = AutoTokenizer.from_pretrained(self.model_id)
+            tokenizer_name = self.model_path or self.model_id
+            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
             prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
         except Exception:
             prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
@@ -1096,6 +1099,7 @@ class AzureOpenAIServerModel(OpenAIServerModel):
     def __init__(
         self,
         model_id: str,
+        model_path: Optional[str] = None,
         azure_endpoint: Optional[str] = None,
         api_key: Optional[str] = None,
         api_version: Optional[str] = None,
@@ -1106,7 +1110,7 @@ class AzureOpenAIServerModel(OpenAIServerModel):
         if api_key is None:
             api_key = os.environ.get("AZURE_OPENAI_API_KEY")
 
-        super().__init__(model_id=model_id, api_key=api_key, custom_role_conversions=custom_role_conversions, **kwargs)
+        super().__init__(model_id=model_id, model_path=model_path, api_key=api_key, custom_role_conversions=custom_role_conversions, **kwargs)
         # if we've reached this point, it means the openai package is available (checked in baseclass) so go ahead and import it
         self.client = AzureOpenAI(api_key=api_key, api_version=api_version, azure_endpoint=azure_endpoint)
 
@@ -1258,6 +1262,7 @@ class FakeToolCallOpenAIServerModel(Model):
     def __init__(
         self,
         model_id: str,
+        model_path: Optional[str] = None,
         api_base: Optional[str] = None,
         api_key: Optional[str] = None,
         organization: Optional[str] | None = None,
@@ -1267,6 +1272,7 @@ class FakeToolCallOpenAIServerModel(Model):
     ):
         super().__init__(**kwargs)
         self.model_id = model_id
+        self.model_path = model_path
         self.client = OpenAI(
             base_url=api_base,
             api_key=api_key,
@@ -1352,7 +1358,8 @@ class FakeToolCallOpenAIServerModel(Model):
 
         messages = completion_kwargs.pop("messages")
         try:
-            tokenizer = AutoTokenizer.from_pretrained(self.model_id)
+            tokenizer_name = self.model_path or self.model_id
+            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
             prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
         except Exception:
             prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])

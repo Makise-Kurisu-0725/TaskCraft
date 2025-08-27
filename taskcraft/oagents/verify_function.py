@@ -12,7 +12,7 @@ import asyncio  # 添加异步支持
 
 KEY = ""
 URL = ""  # 智慧地球
-MODEL = "gpt-4.1"
+MODEL = ""
 
 client = OpenAI(api_key=KEY, base_url=URL, timeout=600.0, max_retries=3)
 

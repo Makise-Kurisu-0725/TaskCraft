@@ -9,7 +9,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from .agent_tools import VerifyAgent
 from .oagents import OpenAIServerModel
@@ -61,7 +61,7 @@ def retry_predict(model, prompt, developer_prompt=None):
 
     return response.content
 
-def check_queries(model_id, qa_batch):
+def check_queries(model_id, qa_batch, model_path: Optional[str] = None):
     """
     Check if synthesized complex questions meet quality standards through two validation steps:
     1. Verify if complex questions can be decomposed back to original questions
@@ -73,6 +73,7 @@ def check_queries(model_id, qa_batch):
     """
     model = OpenAIServerModel(
         model_id,
+        model_path=model_path,
         custom_role_conversions=CUSTOM_ROLE_CONVERSIONS,
         max_completion_tokens=8192,
         api_key=os.environ.get("OPENAI_API_KEY"),
@@ -155,7 +156,7 @@ def check_queries(model_id, qa_batch):
     print(f"After LLM answer check: {len(final_questions)} questions remain")
     return final_questions
 
-def width_extend(qa_batch, model_id="gpt-4.1") -> List[dict]:
+def width_extend(qa_batch, model_id: str = "", model_path: Optional[str] = None) -> List[dict]:
     """
     Group and merge queries to generate higher-level questions
     :param model: model instance
@@ -173,6 +174,7 @@ def width_extend(qa_batch, model_id="gpt-4.1") -> List[dict]:
 
     model = OpenAIServerModel(
         model_id,
+        model_path=model_path,
         custom_role_conversions=CUSTOM_ROLE_CONVERSIONS,
         max_completion_tokens=8192,
         api_key=os.environ.get("OPENAI_API_KEY"),
@@ -224,7 +226,7 @@ def width_extend(qa_batch, model_id="gpt-4.1") -> List[dict]:
             checked_results=[]
             validation_batches = [merged_results[i:i + 10] for i in range(0, len(merged_results), 10)]
             for batch in validation_batches:
-                validated = check_queries(model_id, batch)
+        validated = check_queries(model_id, batch, model_path=model_path)
                 checked_results.extend(validated)
 
 

@@ -30,7 +30,6 @@ dependencies = [
     "cohere",
     "crawl4ai",
     "docx2txt",
-    "duckduckgo_search==8.0.2",
     "e2b_code_interpreter==1.5.1",
     "firecrawl==2.7.1",
     "gradio",

@@ -17,6 +17,7 @@
 import argparse
 import os
 import sys
+from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -50,6 +51,12 @@ def parse_arguments(description):
         help="The model ID to use for the specified model type",
     )
     parser.add_argument(
+        "--model-path",
+        type=str,
+        default=None,
+        help="Local tokenizer path if different from model-id",
+    )
+    parser.add_argument(
         "--imports",
         nargs="*",  # accepts zero or more arguments
         default=[],
@@ -70,12 +77,13 @@ def parse_arguments(description):
     return parser.parse_args()
 
 
-def load_model(model_type: str, model_id: str) -> Model:
+def load_model(model_type: str, model_id: str, model_path: Optional[str] = None) -> Model:
     if model_type == "OpenAIServerModel":
         return OpenAIServerModel(
             api_key=os.getenv("FIREWORKS_API_KEY"),
             api_base="https://api.fireworks.ai/inference/v1",
             model_id=model_id,
+            model_path=model_path,
         )
     elif model_type == "LiteLLMModel":
         return LiteLLMModel(
@@ -98,7 +106,7 @@ def main():
 
     args = parse_arguments(description="Run a CodeAgent with all specified parameters")
 
-    model = load_model(args.model_type, args.model_id)
+    model = load_model(args.model_type, args.model_id, args.model_path)
 
     available_tools = []
     for tool_name in args.tools:
