@@ -33,7 +33,10 @@ from openai import (
     APIStatusError,
     APIConnectionError,
     OpenAIError,
+    OpenAI,
+    AzureOpenAI,
 )
+from transformers import AutoTokenizer
 import time
 import re
 import pdb
@@ -957,16 +960,9 @@ class OpenAIServerModel(Model):
         custom_role_conversions: Optional[Dict[str, str]] = None,
         **kwargs,
     ):
-        try:
-            import openai
-        except ModuleNotFoundError:
-            raise ModuleNotFoundError(
-                "Please install 'openai' extra to use OpenAIServerModel: `pip install 'oagents[openai]'`"
-            ) from None
-
         super().__init__(**kwargs)
         self.model_id = model_id
-        self.client = openai.OpenAI(
+        self.client = OpenAI(
             base_url=api_base,
             api_key=api_key,
             organization=organization,
@@ -1009,28 +1005,32 @@ class OpenAIServerModel(Model):
             # Remove stop_sequences from completion_kwargs
             completion_kwargs.pop('stop', None)
 
-        # response = self.client.chat.completions.create(**completion_kwargs)
+        messages = completion_kwargs.pop("messages")
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(self.model_id)
+            prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
+        except Exception:
+            prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
+        completion_kwargs["prompt"] = prompt
 
         max_retries = 5
         retry_delay = 5  # seconds
         for attempt in range(max_retries):
             try:
-                response = self.client.chat.completions.create(**completion_kwargs)
+                response = self.client.completions.create(**completion_kwargs)
 
                 self.last_input_token_count = response.usage.prompt_tokens
                 self.last_output_token_count = response.usage.completion_tokens
 
-                if not response.choices[0].message.content and not getattr(response.choices[0].message, 'tool_calls', None):  # o1 o3-mini
+                content = response.choices[0].text
+                if not content:
                     raise EmptyContentError(response)
 
-                message = ChatMessage.from_dict(
-                    response.choices[0].message.model_dump(include={"role", "content", "tool_calls"})
-                )
-                message.raw = response
-
-                # If model_id contains 'o3' or 'o4', manually truncate content based on stop_sequences
                 if 'o3' in self.model_id.lower() or 'o4' in self.model_id.lower():
-                    message.content = self.truncate_content_based_on_stop_sequences(message.content, stop_sequences)
+                    content = self.truncate_content_based_on_stop_sequences(content, stop_sequences)
+
+                message = ChatMessage(role="assistant", content=content)
+                message.raw = response
 
                 if tools_to_call_from is not None:
                     return parse_tool_args_if_needed(message)
@@ -1104,9 +1104,7 @@ class AzureOpenAIServerModel(OpenAIServerModel):
 
         super().__init__(model_id=model_id, api_key=api_key, custom_role_conversions=custom_role_conversions, **kwargs)
         # if we've reached this point, it means the openai package is available (checked in baseclass) so go ahead and import it
-        import openai
-
-        self.client = openai.AzureOpenAI(api_key=api_key, api_version=api_version, azure_endpoint=azure_endpoint)
+        self.client = AzureOpenAI(api_key=api_key, api_version=api_version, azure_endpoint=azure_endpoint)
 
 
 def add_tool_prompt(messages, tools):
@@ -1263,16 +1261,9 @@ class FakeToolCallOpenAIServerModel(Model):
         custom_role_conversions: Optional[Dict[str, str]] = None,
         **kwargs,
     ):
-        try:
-            import openai
-        except ModuleNotFoundError:
-            raise ModuleNotFoundError(
-                "Please install 'openai' extra to use OpenAIServerModel: `pip install 'oagents[openai]'`"
-            ) from None
-
         super().__init__(**kwargs)
         self.model_id = model_id
-        self.client = openai.OpenAI(
+        self.client = OpenAI(
             base_url=api_base,
             api_key=api_key,
             organization=organization,
@@ -1355,7 +1346,13 @@ class FakeToolCallOpenAIServerModel(Model):
         if "ep" or "r1" in self.model_id.lower():
             completion_kwargs["messages"] = dict_content_to_str(completion_kwargs["messages"])
 
-        # response = self.client.chat.completions.create(**completion_kwargs)
+        messages = completion_kwargs.pop("messages")
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(self.model_id)
+            prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
+        except Exception:
+            prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
+        completion_kwargs["prompt"] = prompt
 
         max_retries = 5
         retry_delay = 5  # seconds
@@ -1366,20 +1363,24 @@ class FakeToolCallOpenAIServerModel(Model):
         )
         for attempt in range(max_retries):
             try:
-                response = self.client.chat.completions.create(**completion_kwargs)
+                response = self.client.completions.create(**completion_kwargs)
 
                 self.last_input_token_count = response.usage.prompt_tokens
                 self.last_output_token_count = response.usage.completion_tokens
 
-                if not response.choices[0].message.content and not getattr(response.choices[0].message, 'tool_calls', None):  # o1 o3-mini
+                content = response.choices[0].text
+                if not content:
                     raise EmptyContentError(response)
 
                 if tools_to_call_from is not None:
-                    response = parse_tool_call_to_response(response)
-
-                message = ChatMessage.from_dict(
-                    response.choices[0].message.model_dump(include={"role", "content", "tool_calls"})
-                )
+                    temp_resp = type("Resp", (), {})()
+                    temp_resp.choices = [type("Choice", (), {})()]
+                    temp_resp.choices[0].message = type("Msg", (), {"content": content})()
+                    temp_resp = parse_tool_call_to_response(temp_resp)
+                    tool_calls = getattr(temp_resp.choices[0].message, "tool_calls", [])
+                    message = ChatMessage(role="assistant", content=content, tool_calls=tool_calls)
+                else:
+                    message = ChatMessage(role="assistant", content=content)
                 message.raw = response
 
                 return message

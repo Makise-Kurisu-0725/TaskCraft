@@ -6,9 +6,10 @@
 # https://github.com/microsoft/autogen/blob/gaia_multiagent_v01_march_1st/autogen/browser_utils.py
 import os
 import time
+import http.client
+import json
 from typing import Dict, List, Optional
 import requests
-from serpapi import GoogleSearch
 import asyncio
 from crawl4ai import AsyncWebCrawler
 from camel.embeddings import OpenAIEmbedding
@@ -131,76 +132,44 @@ Please return ONLY the overall scores as format: score:[final score]
                                                path=None if not use_db else path)
     
 
-    # serpapi return snippets and concat them to content
+    # search service via HTTP API and return snippets
     def _search(self, query: str, filter_year: Optional[int] = None) -> List[str]:
         if self.serpapi_key is None:
-            raise ValueError("Missing SerpAPI key.")
+            raise ValueError("Missing SERP_API_KEY.")
 
         self.history.append((query, time.time()))
 
-        params = {
-            "engine": "google",  # google
+        conn = http.client.HTTPConnection("api-hub.inner.chj.cloud")
+        payload = json.dumps({
             "q": query,
-            "api_key": self.serpapi_key,
-            "num": self.serp_num
+            "count": self.serp_num,
+        })
+        headers = {
+            'BCS-APIHub-RequestId': os.getenv('SERP_REQUEST_ID', ''),
+            'X-CHJ-GWToken': self.serpapi_key,
+            'Content-Type': 'application/json'
         }
-        if filter_year is not None:
-            params["tbs"] = f"cdr:1,cd_min:01/01/{filter_year},cd_max:12/31/{filter_year}"
+        conn.request("POST", "/bcs-apihub-tools-proxy-service/tool/apihub/search/v1.0/bing-native", payload, headers)
+        res = conn.getresponse()
+        data = json.loads(res.read())
+        values = data.get('data', {}).get('webPages', {}).get('value', [])
 
-        search = GoogleSearch(params)
-
-        results = search.get_dict()
-        '''
-        @ serp result format -> json dict
-        dict_keys(['search_metadata', 
-                    'search_parameters', 
-                    'search_information', 
-                    'knowledge_graph', 
-                    'inline_images', 
-                    'related_questions', 
-                    'organic_results', 
-                    'top_stories_link', 
-                    'top_stories_serpapi_link', 
-                    'related_searches', 
-                    'pagination', 
-                    'serpapi_pagination']
-                    )
-        '''
-
-        self.page_title = f"{query} - Search"
-        if "organic_results" not in results.keys():
-            raise Exception(f"No results found for query: '{query}'. Use a less specific query.")
-        if len(results["organic_results"]) == 0:
+        if len(values) == 0:
             year_filter_message = f" with filter year={filter_year}" if filter_year is not None else ""
             return f"No results found for '{query}'{year_filter_message}. Try with a more general query, or remove the year filter."
 
-        web_snippets: List[str] = list()
-        idx = 0
-        if "organic_results" in results:
-            for page in results["organic_results"]:
-                idx += 1
-                date_published = ""
-                if "date" in page:
-                    date_published = "\nDate published: " + page["date"]
-
-                source = ""
-                if "source" in page:
-                    source = "\nSource: " + page["source"]
-
-                snippet = ""
-                if "snippet" in page:
-                    snippet = "\n" + page["snippet"]
-
-                _search_result = {
-                    "idx": idx,
-                    "title": page["title"],
-                    "date": date_published,
-                    "snippet": snippet,
-                    "source": source,
-                    "link": page['link']
-                }
-
-                web_snippets.append(_search_result)
+        web_snippets: List[str] = []
+        for idx, item in enumerate(values, start=1):
+            snippet = item.get('snippet', '')
+            _search_result = {
+                "idx": idx,
+                "title": item.get('name', ''),
+                "date": "",
+                "snippet": "\n" + snippet if snippet else "",
+                "source": "",
+                "link": item.get('url', '')
+            }
+            web_snippets.append(_search_result)
 
         return web_snippets
 
@@ -384,7 +353,7 @@ Please return ONLY the overall scores as format: score:[final score]
         return new_search_results[:self.search_limit]
 
     # ===================== 类接口 ========================
-    # search snippets by using google search through serpapi
+    # search snippets via HTTP search service
     def search(self, query, filter_year=None):
         use_rollout = self.roll_out > 0 and self.model is not None
 
@@ -433,20 +402,22 @@ Please return ONLY the overall scores as format: score:[final score]
         header = self._check_history(url)
         contents = self.crawl_page(url=url)
         return header + self._query(query, contents)
-    # read page through jina api
+    # read page through jina service
     def read_page(self, url):
-        def jina_read(url):
-            jina_url = f'https://r.jina.ai/{url}'
+        def jina_read(target_url):
+            conn = http.client.HTTPConnection("api-hub.inner.chj.cloud")
+            payload = json.dumps({
+                "url": target_url
+            })
             headers = {
-                'Authorization': f'Bearer {os.getenv("JINA_API_KEY")}',
-                'X-Engine': 'browser',
-                'X-Return-Format': 'text',
-                'X-Timeout': '10',
-                'X-Token-Budget': '80000'
+                'BCS-APIHub-RequestId': os.getenv('JINA_REQUEST_ID', ''),
+                'X-CHJ-GWToken': os.getenv('JINA_API_KEY', '')
             }
+            conn.request("POST", "/bcs-apihub-tools-proxy-service/tool/v1/jina/jina-r", payload, headers)
+            res = conn.getresponse()
+            data = json.loads(res.read())
+            return data.get('data', {}).get('content', '')
 
-            response = requests.get(jina_url, headers=headers)
-            return response.text
         return jina_read(url)
 
 
@@ -480,7 +451,7 @@ class CrawlerSearchTool(Tool):
 
     def forward(self, query: str, filter_year: Optional[int] = None) -> str:
         '''
-            @serpapi -> 根据query返回top-k个相关搜索结果
+            Search the query and return top-k related results
         '''
         return self.crawler.search(query, filter_year)
 

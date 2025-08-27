@@ -33,7 +33,7 @@ class BaseAgent:
 class SearchAgent(BaseAgent):
     def __init__(self, model, name, **kwargs):
         super().__init__(model, name)
-        crawler = SimpleCrawler(serpapi_key=os.environ.get("SERPAPI_API_KEY"))
+        crawler = SimpleCrawler(serpapi_key=os.environ.get("SERP_API_KEY"))
         search = CrawlerSearchTool(crawler)  # inputs: query
         read = CrawlerReadTool(crawler)  # inputs: url
         archive_search = CrawlerArchiveSearchTool(crawler)
